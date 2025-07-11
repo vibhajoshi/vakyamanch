@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="feed-bg" id="feedBackground"></div>
+<div class="feed-container">
+    <div class="feed-header">
+        <h2><i class="fas fa-rss"></i> Community Feed</h2>
+        
+        {% if 'user_id' in session %}
+        <a href="{{ url_for('dashboard') }}" class="button create-post-button">
+            <i class="fas fa-plus"></i> Create Post
+        </a>
+        {% endif %}
+    </div>
+
+    <div id="posts-container" class="posts-container">
+        {% if posts %}
+            {% for post in posts %}
+            <div class="post-card" data-post-id="{{ post.id }}" data-user-id="{{ post.user_id }}">
+                <div class="post-header">
+                    <span class="post-author"><i class="fas fa-user"></i> {{ post.username }}</span>
+                    <span class="post-date"><i class="far fa-clock"></i> {{ post.created_at|format_date }}</span>
+                </div>
+                
+                <h3 class="post-title">{{ post.title }}</h3>
+                
+                {% if post.image and post.image_exists %}
+                <div class="post-image-container">
+                    <img src="{{ url_for('static', filename='uploads/' + post.image) }}" 
+                        alt="{{ post.title }}" class="post-image"
+                      onerror="this.style.display='none'">
+                </div>
+                {% elif post.image and not post.image_exists %}
+                <div class="image-missing">
+                    <p><i class="fas fa-exclamation-triangle"></i> Image not available</p>
+                </div>
+                {% endif %}
+
+                <div class="post-content">
+                    {{ post.content }}
+                </div>
+                
+                <div class="post-interactions">
+                    <button class="like-button" data-post-id="{{ post.id }}">
+                        <span class="like-icon">♡</span>
+                        <span class="like-count">{{ post.like_count }}</span>
+                    </button>
+                    
+                    <button class="comment-toggle" data-post-id="{{ post.id }}">
+                        <i class="far fa-comment"></i>
+                        <span class="comment-count">{{ post.comment_count }}</span>
+                    </button>
+                </div>
+
+                <div class="comment-section" id="comments-{{ post.id }}" style="display:none;">
+                    <div class="comment-form">
+                        <textarea class="comment-textarea" 
+                                placeholder="Write your comment..." 
+                                data-post-id="{{ post.id }}"></textarea>
+                        <button class="comment-submit-btn" 
+                                data-post-id="{{ post.id }}">
+                            <i class="fas fa-paper-plane"></i> Post
+                        </button>
+                    </div>
+                    <div class="comments-list">
+                        {% for comment in post.comments %}
+                        <div class="comment" data-comment-id="{{ comment.id }}">
+                            <div class="comment-header">
+                                <span class="comment-author"><i class="fas fa-user"></i> {{ comment.username }}</span>
+                                <span class="comment-date">{{ comment.created_at|format_date }}</span>
+                                {% if comment.user_id == session.get('user_id') or post.user_id == session.get('user_id') %}
+                                <button class="delete-comment" data-comment-id="{{ comment.id }}">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="comment-content">{{ comment.content }}</div>
+                        </div>
+                        {% else %}
+                        <p class="no-comments">No comments yet. Be the first to comment!</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-posts">
+                <p><i class="fas fa-book-open"></i> No posts found in the community yet.</p>
+                {% if 'user_id' not in session %}
+                <a href="{{ url_for('register') }}" class="button join-button">
+                    <i class="fas fa-user-plus"></i> Join to create the first post!
+                </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Create floating writing icons
+    const bg = document.getElementById('feedBackground');
+    const icons = ['✍️', '📝', '📖', '📚', '🖋️', '✏️', '📓', '📜'];
+    
+    for (let i = 0; i < 15; i++) {
+        const icon = document.createElement('div');
+        icon.className = 'floating-icons';
+        icon.textContent = icons[Math.floor(Math.random() * icons.length)];
+        icon.style.left = Math.random() * 100 + '%';
+        icon.style.animationDuration = (10 + Math.random() * 20) + 's';
+        icon.style.animationDelay = Math.random() * 5 + 's';
+        icon.style.fontSize = (20 + Math.random() * 20) + 'px';
+        bg.appendChild(icon);
+    }
+    
+    setupPostInteractions();
+});
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/posts.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <!-- Animated Background Elements -->
+    <div class="hero-particles" id="heroParticles"></div>
+    <div class="hero-overlay"></div>
+    
+    <div class="hero-content">
+        <!-- Animated Logo with Typewriter Effect -->
+        <h1 class="logo typewriter">VākyaManch</h1>
+        
+        <!-- Floating Taglines -->
+        <div class="tagline-container">
+            <p class="tagline fade-in">Platform of Words</p>
+            <p class="subtagline fade-in delay-1">Where thoughts flow freely and connections grow</p>
+        </div>
+        
+        <!-- Pulse Animation for CTA Buttons -->
+        <div class="cta-buttons">
+            {% if 'user_id' not in session %}
+                <a href="{{ url_for('register') }}" class="cta-button primary pulse">Join Now</a>
+                <a href="{{ url_for('login') }}" class="cta-button secondary pulse delay-1">Sign In</a>
+            {% else %}
+                <a href="{{ url_for('feed') }}" class="cta-button primary pulse">Explore Posts</a>
+            {% endif %}
+        </div>
+        
+        
+    </div>
+</div>
+
+<!-- Features Section with Animation on Scroll -->
+<section class="features-section">
+    <div class="feature slide-in">
+        <div class="feature-icon">✍️</div>
+        <h3>Express Yourself</h3>
+        <p>Share your thoughts, stories, and ideas with a supportive community.</p>
+    </div>
+    
+    <div class="feature slide-in delay-1">
+        <div class="feature-icon">🌐</div>
+        <h3>Connect Globally</h3>
+        <p>Engage with writers and readers from around the world.</p>
+    </div>
+    
+    <div class="feature slide-in delay-2">
+        <div class="feature-icon">🔒</div>
+        <h3>Your Safe Space</h3>
+        <p>A respectful platform where your voice matters.</p>
+    </div>
+</section>
+
+<!-- Testimonial with Floating Animation -->
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/home-animations.js') }}"></script>
+{% endblock %}
+
+{% endblock %}

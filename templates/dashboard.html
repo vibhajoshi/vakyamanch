@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-bg" id="dashboardBackground"></div>
+<div class="dashboard-container">
+    <section class="dashboard-content">
+        <h2 class="dashboard-welcome">Welcome back, {{ session['username'] }}! ✍️</h2>
+        
+        <div class="create-post-card">
+            <h3><i class="fas fa-pen-fancy"></i> Create New Post</h3>
+            <form id="create-post-form" enctype="multipart/form-data" class="post-form">
+                <div class="form-group">
+                    <label for="post-title">Title</label>
+                    <input type="text" id="post-title" required placeholder="Your post title...">
+                </div>
+                <div class="form-group">
+                    <label for="post-content">Content</label>
+                    <textarea id="post-content" rows="8" required placeholder="Share your thoughts..."></textarea>
+                </div>
+                <div class="form-group file-upload">
+                    <label for="post-image">
+                        <i class="fas fa-image"></i> 
+                        <span>Add Image (optional)</span>
+                    </label>
+                    <input type="file" id="post-image" accept="image/*">
+                </div>
+                <button type="submit" class="button publish-button">
+                    <i class="fas fa-paper-plane"></i> Publish
+                </button>
+            </form>
+        </div>
+        
+        <div class="user-posts-section">
+            <h3><i class="fas fa-book-open"></i> Your Stories</h3>
+            <div id="user-posts-container">
+                {% for post in posts %}
+                    <div class="post-card" data-post-id="{{ post.id }}">
+                        
+                        
+                        <h4 class="post-title">{{ post.title }}</h4>
+                        
+                        {% if post.image and post.image_exists %}
+                            <div class="post-image-container">
+                                <img src="{{ url_for('static', filename='uploads/' + post.image) | replace(' ', '%20') }}" 
+                                    alt="Post image" 
+                                    class="post-image"
+                                    onerror="this.onerror=null;this.style.display='none'">
+                            </div>
+                        {% elif post.image and not post.image_exists %}
+                            <div class="image-missing">
+                                <p><i class="fas fa-exclamation-triangle"></i> Image not available</p>
+                            </div>
+                        {% endif %}
+
+                        <div class="post-content">{{ post.content }}</div>
+                        
+                        <div class="post-actions">
+                            <a href="{{ url_for('edit_post_form', post_id=post.id) }}" 
+                            class="button edit-button">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <button class="button delete-button delete-post" 
+                                    data-post-id="{{ post.id }}">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        </div>
+                        
+                        <div class="post-comments">
+                            <h5><i class="fas fa-comments"></i> Comments</h5>
+                            <div class="comments-list" id="comments-{{ post.id }}">
+                                {% for comment in post.comments %}
+                                <div class="comment">
+                                    <div class="comment-header">
+                                        <span class="comment-author"><i class="fas fa-user"></i> {{ comment.username }}</span>
+                                        <span class="comment-date">{{ comment.created_at }}</span>
+                                        {% if comment.user_id == session['user_id'] or post.user_id == session['user_id'] %}
+                                        <button class="delete-comment" data-comment-id="{{ comment.id }}">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div class="comment-content">{{ comment.content }}</div>
+                                </div>
+                                {% else %}
+                                <p class="no-comments">No comments yet. Be the first to comment!</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Create floating writing icons
+    const bg = document.getElementById('dashboardBackground');
+    const icons = ['✍️', '📝', '📖', '📚', '🖋️', '✏️', '📓', '📜'];
+    
+    for (let i = 0; i < 12; i++) {
+        const icon = document.createElement('div');
+        icon.className = 'floating-icons';
+        icon.textContent = icons[Math.floor(Math.random() * icons.length)];
+        icon.style.left = Math.random() * 100 + '%';
+        icon.style.animationDuration = (15 + Math.random() * 25) + 's';
+        icon.style.animationDelay = Math.random() * 8 + 's';
+        icon.style.fontSize = (20 + Math.random() * 25) + 'px';
+        bg.appendChild(icon);
+    }
+
+    // Setup delete buttons
+    document.querySelectorAll('.delete-post').forEach(button => {
+        button.addEventListener('click', async function() {
+            const postId = this.dataset.postId;
+            
+            if (confirm('Are you sure you want to delete this post?')) {
+                try {
+                    const response = await fetch(`/delete_post/${postId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'same-origin'
+                    });
+                    
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        const data = await response.json();
+                        alert(data.error || 'Failed to delete post');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the post');
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/posts.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setupPostForm();
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Uploaded Files Debug</h2>
+<table>
+    <tr>
+        <th>Filename</th>
+        <th>Exists</th>
+        <th>Size</th>
+        <th>Preview</th>
+    </tr>
+    {% for file in uploads %}
+    <tr>
+        <td>{{ file.filename }}</td>
+        <td>{{ file.exists }}</td>
+        <td>{{ file.size }} bytes</td>
+        <td>
+            {% if file.exists %}
+            <img src="{{ url_for('static', filename='uploads/' + file.filename) }}" 
+                 style="max-width: 100px; max-height: 100px;">
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

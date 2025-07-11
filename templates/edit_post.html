@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="edit-post-container">
+    <h2>Edit Post</h2>
+    <form id="edit-post-form" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="post-title">Title</label>
+            <input type="text" id="post-title" value="{{ post.title }}" required>
+        </div>
+        <div class="form-group">
+            <label for="post-content">Content</label>
+            <textarea id="post-content" rows="5" required>{{ post.content }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Current Image</label>
+            {% if post.image %}
+                <img src="{{ url_for('static', filename='uploads/' + post.image) }}" class="current-image">
+                <label>
+                    <input type="checkbox" id="remove-image"> Remove image
+                </label>
+            {% else %}
+                <p>No image currently</p>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="post-image">New Image (optional)</label>
+            <input type="file" id="post-image" accept="image/*">
+        </div>
+        <button type="submit" class="button">Update Post</button>
+        <a href="{{ url_for('dashboard') }}" class="button secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('edit-post-form');
+        
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('post-title').value;
+            const content = document.getElementById('post-content').value;
+            const removeImage = document.getElementById('remove-image')?.checked;
+            const imageInput = document.getElementById('post-image');
+            const imageFile = imageInput.files[0];
+            
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('content', content);
+            if (removeImage) formData.append('remove_image', 'true');
+            if (imageFile) formData.append('image', imageFile);
+            
+            try {
+                const response = await fetch(window.location.pathname, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Post updated successfully!');
+                    window.location.href = "{{ url_for('dashboard') }}";
+                } else {
+                    alert(data.error || 'Failed to update post');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while updating the post');
+            }
+        });
+    });
+</script>
+{% endblock %}

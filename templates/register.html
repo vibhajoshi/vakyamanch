@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-bg" id="authBackground"></div>
+<div class="auth-container">
+    <section class="auth-form">
+        <h2>Join Our Writing Community</h2>
+        <p class="auth-subtitle">Create your account to start sharing your stories</p>
+        
+        <form id="register-form" method="POST" action="/register">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-user-edit"></i>
+                    <input type="text" id="username" name="username" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <button type="button" id="send-otp-btn" class="button small">
+                    <i class="fas fa-paper-plane"></i> Send OTP
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label for="otp">OTP</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-key"></i>
+                    <input type="text" id="otp" name="otp" required>
+                </div>
+                <small>Check your email for the OTP code</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <small>Password must be at least 6 characters</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="confirm_password" name="confirm_password" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="button primary-button">
+                <i class="fas fa-user-plus"></i> Register
+            </button>
+        </form>
+        
+        <div class="auth-divider">
+            <span>or</span>
+        </div>
+        
+        <p class="auth-switch">Already have an account? 
+            <a href="{{ url_for('login') }}" class="highlight-link">Login here</a>
+        </p>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='auth.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        setupRegisterForm();
+        
+        // Create floating writing icons
+        const bg = document.getElementById('authBackground');
+        const icons = ['✍️', '📝', '📖', '📚', '🖋️', '✏️', '📓', '📜'];
+        
+        for (let i = 0; i < 15; i++) {
+            const icon = document.createElement('div');
+            icon.className = 'floating-icons';
+            icon.textContent = icons[Math.floor(Math.random() * icons.length)];
+            icon.style.left = Math.random() * 100 + '%';
+            icon.style.animationDuration = (10 + Math.random() * 20) + 's';
+            icon.style.animationDelay = Math.random() * 5 + 's';
+            icon.style.fontSize = (20 + Math.random() * 20) + 'px';
+            bg.appendChild(icon);
+        }
+    });
+</script>
+{% endblock %}

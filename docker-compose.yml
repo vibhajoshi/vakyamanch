@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - ./database.db:/app/database.db 
+      - ./static/uploads:/app/static/uploads
+    environment:
+      - DOCKERIZED=true
+      - FLASK_ENV=production
+      - MAIL_SERVER=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USE_TLS=True
+      - MAIL_USERNAME=vakyamanch@gmail.com
+      - MAIL_PASSWORD=ibad jfml iecv tzap
+      - MAIL_DEFAULT_SENDER=vakyamanch@gmail.com
+      - SECRET_KEY=your_secret_key_here
