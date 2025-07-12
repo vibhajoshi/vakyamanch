@@ -49,9 +49,10 @@ jobs:
       - name: Configure Kubernetes
         run: |
           mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          echo "${{ secrets.KUBE_CONFIG_RAW }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
           kubectl version --client
-
+      
       - name: Deploy to Kubernetes
         run: |
           # Apply Kubernetes manifests
