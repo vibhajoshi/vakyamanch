@@ -33,7 +33,6 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  # REPLACE THE EXISTING 'deploy' JOB WITH THIS ENHANCED VERSION
   deploy-to-k8s:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -41,52 +40,83 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      # Debug: List files to verify manifests exist
       - name: Verify Kubernetes files
         run: |
           ls -la kubernetes/
-          cat kubernetes/*.yaml || true
+          cat kubernetes/deployment.yaml
 
-      # GCP Auth with debugging
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-        id: auth
 
-      - name: Debug GCP Auth
-        run: |
-          echo "Project: ${{ steps.auth.outputs.project_id }}"
-          gcloud auth list
-
-      # GKE Setup with verbose output
       - name: Configure GKE
         uses: google-github-actions/get-gke-credentials@v1
         with:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_ZONE }}
-        id: gke
 
-      - name: Debug Cluster Access
+      - name: Process Kubernetes manifests
         run: |
-          kubectl config current-context
-          kubectl cluster-info
-          kubectl get nodes
-
-      # Deployment with validation
-      - name: Deploy to GKE
-        run: |
-          set -x  # Enable debug mode
-          
           # Create namespace if not exists
           kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
           
-          # Validate manifests
-          kubectl apply -f kubernetes/ --dry-run=server -n ${{ env.K8S_NAMESPACE }}
+          # Create secret if not exists
+          if [ -f .env ]; then
+            kubectl create secret generic vakyamanch-secrets \
+              --from-env-file=.env \
+              --dry-run=client -o yaml | \
+              kubectl apply -f - -n ${{ env.K8S_NAMESPACE }}
+          fi
           
-          # Apply for real
-          kubectl apply -f kubernetes/ -n ${{ env.K8S_NAMESPACE }}
+          # Process all yaml files to replace placeholders
+          mkdir -p kubernetes/processed
+          for file in kubernetes/*.yaml; do
+            sed \
+              -e "s/DOCKERHUB_USERNAME_PLACEHOLDER/${{ secrets.DOCKERHUB_USERNAME }}/g" \
+              -e "s/\$DOCKERHUB_USERNAME/${{ secrets.DOCKERHUB_USERNAME }}/g" \
+              "$file" > "kubernetes/processed/$(basename $file)"
+          done
+
+
+      - name: Apply Network Policy
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: vakyamanch-firewall
+            namespace: ${{ env.K8S_NAMESPACE }}
+          spec:
+            podSelector:
+              matchLabels:
+                app: vakyamanch
+            policyTypes:
+            - Ingress
+            ingress:
+            - from:
+              - ipBlock:
+                  cidr: 0.0.0.0/0
+              ports:
+              - protocol: TCP
+                port: 5000
+          EOF
+
+      - name: Apply Kubernetes manifests
+        run: |
+          # Apply storage classes first if they exist
+          if [ -f kubernetes/processed/storage.yaml ]; then
+            kubectl apply -f kubernetes/processed/storage.yaml -n ${{ env.K8S_NAMESPACE }}
+            sleep 10  # Wait for storage to provision
+          fi
           
-          # Verify
-          kubectl get all -n ${{ env.K8S_NAMESPACE }}
+          # Apply all other manifests
+          kubectl apply -f kubernetes/processed/ -n ${{ env.K8S_NAMESPACE }}
+          
+          # Verify deployment
+          kubectl get deployments,pods,services,pvc -n ${{ env.K8S_NAMESPACE }}
           kubectl rollout status deployment/vakyamanch -n ${{ env.K8S_NAMESPACE }} --timeout=300s
+          
+          # Debug if PVCs are pending
+          kubectl describe pvc -n ${{ env.K8S_NAMESPACE }}
+          kubectl get storageclass

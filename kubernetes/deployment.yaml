@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vakyamanch
+  namespace: vakyamanch-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vakyamanch
+  template:
+    metadata:
+      labels:
+        app: vakyamanch
+    spec:
+      containers:
+      - name: app
+        image: vibhajoshi023/vakyamanch:latest
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+        volumeMounts:
+        - mountPath: /app/instance
+          name: instance-volume
+        - mountPath: /app/static/uploads
+          name: uploads-volume
+      volumes:
+      - name: instance-volume
+        persistentVolumeClaim:
+          claimName: vakyamanch-instance-pvc
+      - name: uploads-volume
+        persistentVolumeClaim:
+          claimName: vakyamanch-uploads-pvc

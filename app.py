@@ -104,9 +104,9 @@ def favicon():
 # Initialize database
 def init_db():
     try:
-        conn = sqlite3.connect('database.db')
+        db_path = '/app/database.db' if os.environ.get('DOCKERIZED') else 'database.db'
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        
         # Enable foreign key constraints
         cursor.execute("PRAGMA foreign_keys = ON")
         
@@ -177,7 +177,8 @@ init_db()
 
 # Database connection helper
 def get_db():
-    conn = sqlite3.connect('database.db')
+    db_path = '/app/database.db' if os.environ.get('DOCKERIZED') else 'database.db'
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -187,6 +188,11 @@ def delete_post_image(image_filename):
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
         except OSError:
             pass  # File doesn't exist or couldn't be deleted
+
+@app.route('/api/health')
+def health_check():
+    return jsonify({'status': 'ok'}), 200
+
 
 @app.template_filter('format_date')
 def format_date(value):
