@@ -1,20 +1,21 @@
-name: CI/CD Pipeline for Vakyamanch
+name: Vakyamanch GKE Deployment
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: vakyamanch
   K8S_NAMESPACE: vakyamanch-prod
+  GKE_CLUSTER: vakyamanch-gke
+  GKE_ZONE: us-central1-a
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
       - name: Login to Docker Hub
@@ -23,43 +24,69 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build and push Docker image
+      - name: Build and Push
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+  # REPLACE THE EXISTING 'deploy' JOB WITH THIS ENHANCED VERSION
   deploy-to-k8s:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v3
+      # Debug: List files to verify manifests exist
+      - name: Verify Kubernetes files
+        run: |
+          ls -la kubernetes/
+          cat kubernetes/*.yaml || true
 
-      - name: Configure Kubernetes
+      # GCP Auth with debugging
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+        id: auth
+
+      - name: Debug GCP Auth
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG_RAW }}" > ~/.kube/config
-          chmod 600 ~/.kube/config
-          kubectl version --client
-      
-      - name: Deploy to Kubernetes
+          echo "Project: ${{ steps.auth.outputs.project_id }}"
+          gcloud auth list
+
+      # GKE Setup with verbose output
+      - name: Configure GKE
+        uses: google-github-actions/get-gke-credentials@v1
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_ZONE }}
+        id: gke
+
+      - name: Debug Cluster Access
         run: |
-          # Apply Kubernetes manifests
-          kubectl apply -f kubernetes/namespace.yaml
-          kubectl apply -f kubernetes/deployment.yaml
-          kubectl apply -f kubernetes/service.yaml
-          kubectl apply -f kubernetes/ingress.yaml
+          kubectl config current-context
+          kubectl cluster-info
+          kubectl get nodes
+
+      # Deployment with validation
+      - name: Deploy to GKE
+        run: |
+          set -x  # Enable debug mode
           
-          # Check deployment status
-          kubectl rollout status deployment/vakyamanch -n ${{ env.K8S_NAMESPACE }}
+          # Create namespace if not exists
+          kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Validate manifests
+          kubectl apply -f kubernetes/ --dry-run=server -n ${{ env.K8S_NAMESPACE }}
+          
+          # Apply for real
+          kubectl apply -f kubernetes/ -n ${{ env.K8S_NAMESPACE }}
+          
+          # Verify
+          kubectl get all -n ${{ env.K8S_NAMESPACE }}
+          kubectl rollout status deployment/vakyamanch -n ${{ env.K8S_NAMESPACE }} --timeout=300s
